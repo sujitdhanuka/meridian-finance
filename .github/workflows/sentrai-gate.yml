@@ -1,0 +1,41 @@
+# Self-contained SentRAI gate — works for PRIVATE app repos and any CI runner,
+# with NO cross-repo Action reference. The gate runner is fetched from your
+# SentRAI Console at runtime, so there's nothing to vendor and no tag/Access
+# setup. Copy this to .github/workflows/sentrai-gate.yml.
+name: SentRAI AI Compliance Gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write # upload SARIF
+
+jobs:
+  sentrai-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: SentRAI Pre-Deployment Gate
+        env:
+          SENTRAI_URL: ${{ vars.SENTRAI_URL }} # e.g. https://sentraiconsole.com
+          SENTRAI_CI_TOKEN: ${{ secrets.SENTRAI_CI_TOKEN }}
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          curl -sSfL "$SENTRAI_URL/api/v1/ci/gate.mjs" -o sentrai-gate.mjs
+          node sentrai-gate.mjs
+
+      - name: Upload SARIF to the Security tab
+        if: always() && hashFiles('sentrai-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: sentrai-results.sarif
