@@ -2,8 +2,6 @@
 import openai
 import networkx as nx
 
-openai.api_key = "sk-proj-mrdnDEMO7f3Kq9ZtX2vLw8RbN4"  # TODO: pull from vault
-
 def fraud_graph(txn_ring: nx.Graph) -> dict:
     """Flags suspicious transaction rings; drafts the analyst narrative with an LLM."""
     suspicion = sum(d.get("weight", 0) for _, _, d in txn_ring.edges(data=True)) / max(txn_ring.size(), 1)
